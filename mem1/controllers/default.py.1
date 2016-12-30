@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+# this file is released under public domain and you can use without limitations
+
+# -------------------------------------------------------------------------
+# This is a sample controller
+# - index is the default action of any application
+# - user is required for authentication and authorization
+# - download is for downloading files uploaded in the db (does streaming)
+# -------------------------------------------------------------------------
+import datetime
+
+
+def index():
+    return dict(message="")
+def get_id():
+    # this seems like the wrong way to get an id but ...
+    #form = SQLFORM(db.addr, submit_button='Next', fields=['zip'], labels={'zip':'id'}, showid=True)
+    form = FORM('Your id:', INPUT(_name='number', requires=IS_NOT_EMPTY()), INPUT(_type='submit'))
+    if form.accepts(request,session):
+        redirect(URL('newmember_form', args=(form.vars.number)))
+        #redirect(URL('form2', args=(form.vars.id, True)))
+    return dict(form=form)
+def list_members():
+    return dict(grid=SQLFORM.grid(db.addr, deletable=False))
+def newmember_form():
+
+    if(request.args[0] > 0):
+        row = db(db.addr.id == request.args[0]).select().first()
+#         form.vars.first_name = row.first_name
+#         form.vars.last_name = row.last_name
+#         form.vars.street = row.street
+#         form.vars.city = row.city
+#         form.vars.state = row.state
+#         form.vars.zip = row.zip
+#         form.vars.cell = row.cell
+#         form.vars.phone = row.phone
+#         form.vars.emial = row.email
+#         form.vars.birth_date = row.birth_date
+        form = SQLFORM(db.addr, row, submit_button='Next', fields=["first_name",'last_name','street','city','state','zip','cell','phone','email','birth_date'])
+    else:
+        form = SQLFORM(db.addr, submit_button='Next', fields=["first_name",'last_name','street','city','state','zip','cell','phone','email','birth_date'])
+    if form.process().accepted:
+        response.flash = 'form accepted'
+        row = db(db.addr.id == form.vars.id).select().first()
+        row.expire_date = datetime.datetime.now() + datetime.timedelta(365)
+        row.email_works = False
+        if(form.vars.email != ""):
+            row.email_works = True
+        row.update_record()
+        redirect(URL('form2', args=(form.vars.id, True)))
+    elif form.errors:
+        response.flash = 'form has errors'
+    else:
+        pass #response.flash = 'please fill out the form'
+    return dict(form=form)
+def form2():
+    form = SQLFORM(db.form_update)
+    form.vars.member_id = request.args[0]
+    form.vars.app_date = datetime.datetime.now().isoformat()[:10]
+    if form.process().accepted:
+        response.flash = 'form accepted'
+        if(form.vars.level == 'Family'):
+            m = db.addr.family.max()[0]
+            response.flash = m
+#             row = db(db.addr.id == form.vars.member_id).select().first()
+#             row.family = m+1
+#             row.update_record()
+#             redirect(URL('form3', args=(form.vars.member_id)))
+        redirect(URL('index'))
+    elif form.errors:
+        response.flash = 'form has errors'
+    else:
+        pass #response.flash = 'please fill out the form'
+    return dict(form=form)
+def form3():
+    form = SQLFORM(db.addr, submit_button='Next', fields=["first_name",'last_name','street','city','state','zip','cell','phone','email'])
+    row = db(db.addr.id == form.vars.member_id).select().first()
+    form.vars.street = row.street
+    form.vars.city = row.city
+    form.vars.state = row.state
+    form.vars.zip = row.zip
+    form.vars.cell = row.cell
+    form.vars.phone = row.phone
+    form.vars.emial = row.email
+    
+    if form.process().accepted:
+        response.flash = 'form accepted'
+        row = db(db.addr.id == form.vars.id).select().first()
+        row.expire_date = datetime.datetime.now() + datetime.timedelta(365)
+        row.email_works = True
+        row.update_record()
+#         redirect(URL('form2', args=(form.vars.id, True)))
+    elif form.errors:
+        response.flash = 'form has errors'
+    else:
+        pass #response.flash = 'please fill out the form'
+    return dict(form=form)
+def user():
+    """
+    exposes:
+    http://..../[app]/default/user/login
+    http://..../[app]/default/user/logout
+    http://..../[app]/default/user/register
+    http://..../[app]/default/user/profile
+    http://..../[app]/default/user/retrieve_password
+    http://..../[app]/default/user/change_password
+    http://..../[app]/default/user/bulk_register
+    use @auth.requires_login()
+        @auth.requires_membership('group name')
+        @auth.requires_permission('read','table name',record_id)
+    to decorate functions that need access control
+    also notice there is http://..../[app]/appadmin/manage/auth to allow administrator to manage users
+    """
+    return dict(form=auth())
+
+
+@cache.action()
+def download():
+    """
+    allows downloading of uploaded files
+    http://..../[app]/default/download/[filename]
+    """
+    return response.download(request, db)
+
+
+def call():
+    """
+    exposes services. for example:
+    http://..../[app]/default/call/jsonrpc
+    decorate with @services.jsonrpc the functions to expose
+    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
+    """
+    return service()

@@ -1,0 +1,9 @@
+{{extend 'layout.html'}}
+<!-- <h2>{{=A('Done entering family members', _href=URL('index'))}} -->
+
+    <br/>Input form</h2>
+{{=BEAUTIFY(form_1)}}
+{{=BEAUTIFY(form)}}
+{{=BEAUTIFY(form_2)}}
+Family {{=BEAUTIFY(int(session.familyId))}}
+Member {{=BEAUTIFY(session.memId)}}
